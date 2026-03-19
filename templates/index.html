@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HW1-1 & HW1-2: Value Iteration & Policy</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            margin: 40px;
+            color: #333;
+            background: #ffffff;
+        }
+
+        h2,
+        h3 {
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Input section */
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .controls input {
+            padding: 5px;
+            font-size: 16px;
+            width: 60px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #e0e0e0;
+        }
+
+        .btn.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #0056b3;
+        }
+
+        .instructions {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        /* The Main Square Grid */
+        .grid-wrapper {
+            margin-bottom: 30px;
+            display: inline-block;
+        }
+
+        .grid-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .grid {
+            display: grid;
+            border: 1px solid #000;
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            font-size: 16px;
+            background-color: rgba(255, 255, 255, 1);
+            color: #000;
+        }
+
+        .cell:hover {
+            background-color: #f5f5f5;
+        }
+
+        .cell.start,
+        .res-cell.start {
+            background-color: #8bc34a !important;
+            /* Green */
+            color: black;
+            font-weight: bold;
+        }
+
+        .cell.end,
+        .res-cell.end {
+            background-color: #f10a0a !important;
+            /* Green */
+            color: black;
+            font-weight: bold;
+        }
+
+        .res-cell.path {
+            background-color: #689f38 !important;
+            /* Darker Green for optimal path */
+            border: 2px solid #000 !important;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .cell.obstacle,
+        .res-cell.obs-res {
+            background-color: #808080 !important;
+            /* Grey */
+            color: transparent;
+        }
+
+        /* Results section */
+        .toggle-group {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 15px;
+        }
+
+        .results-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 40px;
+            justify-content: flex-start;
+        }
+
+        .plot-wrapper {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .plot-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        /* Plot Matrix layout with axes */
+        .plot-matrix-container {
+            display: flex;
+            position: relative;
+        }
+
+        .y-axis {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            padding-right: 5px;
+            font-size: 10px;
+        }
+
+        .y-axis-label {
+            height: 50px;
+            /* same as res-cell height */
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .matrix-content-wrapper {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .result-grid {
+            display: grid;
+            border: 2px solid #000;
+            /* Thicker border for visual appeal */
+        }
+
+        .res-cell {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #555;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            background: white;
+            position: relative;
+        }
+
+        .x-axis {
+            display: flex;
+            justify-content: space-around;
+            padding-top: 5px;
+            font-size: 10px;
+        }
+
+        .x-axis-label {
+            width: 50px;
+            text-align: center;
+        }
+
+        .arrow-char {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .label-text {
+            font-size: 8px;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="controls">
+            <label>Grid Size N (5-9):</label>
+            <input type="number" id="gridN" value="6" min="5" max="9">
+            <button class="btn" id="resetBtn">Reset</button>
+            <button class="btn" id="evalBtn" style="background:#4caf50;color:white;" disabled>Run Algorithm</button>
+        </div>
+
+        <div class="grid-wrapper">
+            <div class="grid-header" id="gridHeaderTitle">Square Grid:</div>
+            <div class="instructions">
+                1. Click on a cell to set up the start grid as <span
+                    style="color:#8bc34a;font-weight:bold;">green</span><br>
+                2. Click to set up the end grid as <span style="color:#f80505;font-weight:bold;">red target</span><br>
+                3. Click to add up to <span id="maxObsDisplay">3</span> obstacles (grey).
+            </div>
+            <div class="grid" id="mainGrid"></div>
+        </div>
+
+        <div id="resultsSection" style="display: none;">
+            <h2>HW1-2 最佳政策與價值迭代展示</h2>
+
+            <div class="toggle-group">
+                <button class="btn active" id="btnRandom">1. Show Random Policy</button>
+                <button class="btn" id="btnOptimal">2. Show Optimal Policy (Value Iteration)</button>
+            </div>
+
+            <div class="results-container" id="resultsContainer">
+                <!-- Value Matrix -->
+                <div class="plot-wrapper">
+                    <div class="plot-title" id="valTitle">Value Matrix</div>
+                    <div class="plot-matrix-container">
+                        <div class="y-axis" id="valYAxis"></div>
+                        <div class="matrix-content-wrapper">
+                            <div class="result-grid" id="valGrid"></div>
+                            <div class="x-axis" id="valXAxis"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Policy Matrix -->
+                <div class="plot-wrapper">
+                    <div class="plot-title" id="polTitle">Optimal Policy Matrix</div>
+                    <div class="plot-matrix-container">
+                        <div class="y-axis" id="polYAxis"></div>
+                        <div class="matrix-content-wrapper">
+                            <div class="result-grid" id="polGrid"></div>
+                            <div class="x-axis" id="polXAxis"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let n = 6;
+        let mainGrid = document.getElementById('mainGrid');
+        let startCell = null;
+        let endCell = null;
+        let obstacles = [];
+        let state = 0; // 0=need start, 1=need end, 2=need obs, 3=ready
+        let maxObs = 4;
+
+        // Store returned result
+        let evalData = null;
+        let currentMode = 'optimal'; // 'random' or 'optimal'
+
+        function init() {
+            n = parseInt(document.getElementById('gridN').value);
+            if (n < 5) n = 5; if (n > 9) n = 9;
+            document.getElementById('gridN').value = n;
+
+            document.getElementById('gridHeaderTitle').innerText = `${n} x ${n} Square Grid:`;
+            maxObs = n - 2;
+            document.getElementById('maxObsDisplay').innerText = maxObs;
+
+            mainGrid.style.gridTemplateColumns = `repeat(${n}, 50px)`;
+            mainGrid.innerHTML = '';
+
+            startCell = null; endCell = null; obstacles = []; state = 0;
+            document.getElementById('evalBtn').disabled = true;
+            document.getElementById('resultsSection').style.display = 'none';
+
+            let count = 1;
+            for (let r = 0; r < n; r++) {
+                for (let c = 0; c < n; c++) {
+                    let cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.innerText = count++;
+                    cell.dataset.r = r;
+                    cell.dataset.c = c;
+                    cell.onclick = () => onCellClick(r, c, cell);
+                    mainGrid.appendChild(cell);
+                }
+            }
+        }
+
+        function onCellClick(r, c, cell) {
+            if (cell.classList.contains('start') || cell.classList.contains('end') || cell.classList.contains('obstacle')) {
+                return;
+            }
+
+            if (state === 0) {
+                cell.classList.add('start');
+                startCell = [n - 1 - r, c]; // Y, X
+                state = 1;
+            } else if (state === 1) {
+                cell.classList.add('end');
+                endCell = [n - 1 - r, c];
+                state = 2;
+                document.getElementById('evalBtn').disabled = false;
+            } else if (state === 2) {
+                cell.classList.add('obstacle');
+                obstacles.push([n - 1 - r, c]);
+                if (obstacles.length >= maxObs) {
+                    state = 3;
+                }
+            }
+        }
+
+        document.getElementById('resetBtn').onclick = init;
+        document.getElementById('gridN').onchange = init;
+
+        document.getElementById('evalBtn').onclick = async () => {
+            let btn = document.getElementById('evalBtn');
+            btn.disabled = true;
+            btn.innerText = 'Evaluating...';
+
+            try {
+                let reqBody = { n: n, start: startCell, end: endCell, obstacles: obstacles };
+                let res = await fetch('/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(reqBody)
+                });
+                evalData = await res.json();
+
+                // Default show optimal
+                currentMode = 'optimal';
+                updateToggleButtons();
+
+                document.getElementById('resultsSection').style.display = 'block';
+                renderResults();
+            } catch (e) {
+                alert('Error connecting to backend.');
+                console.error(e);
+            }
+
+            btn.disabled = false;
+            btn.innerText = 'Run Value Iteration';
+        };
+
+        document.getElementById('btnRandom').onclick = () => {
+            currentMode = 'random';
+            updateToggleButtons();
+            renderResults();
+        };
+
+        document.getElementById('btnOptimal').onclick = () => {
+            currentMode = 'optimal';
+            updateToggleButtons();
+            renderResults();
+        };
+
+        function updateToggleButtons() {
+            document.getElementById('btnRandom').classList.remove('active');
+            document.getElementById('btnOptimal').classList.remove('active');
+            if (currentMode === 'random') {
+                document.getElementById('btnRandom').classList.add('active');
+                document.getElementById('valTitle').innerText = 'Value Matrix (Random Policy)';
+                document.getElementById('polTitle').innerText = 'Policy Matrix (Random)';
+            } else {
+                document.getElementById('btnOptimal').classList.add('active');
+                document.getElementById('valTitle').innerText = 'Optimal Value Matrix V*(s)';
+                document.getElementById('polTitle').innerText = 'Optimal Policy Matrix';
+            }
+        }
+
+        function isPath(y, x) {
+            if (!evalData.optimal_path || currentMode !== 'optimal') return false;
+            for (let pt of evalData.optimal_path) {
+                if (pt[0] === y && pt[1] === x) return true;
+            }
+            return false;
+        }
+
+        function renderResults() {
+            if (!evalData) return;
+
+            let valData = currentMode === 'optimal' ? evalData.optimal_values : evalData.random_values;
+            let polData = currentMode === 'optimal' ? evalData.optimal_policy : evalData.random_policy;
+
+            let valGrid = document.getElementById('valGrid');
+            let polGrid = document.getElementById('polGrid');
+            let axes = ['valYAxis', 'valXAxis', 'polYAxis', 'polXAxis'];
+
+            // Setup Grid layouts
+            valGrid.style.gridTemplateColumns = `repeat(${n}, 50px)`;
+            polGrid.style.gridTemplateColumns = `repeat(${n}, 50px)`;
+            valGrid.innerHTML = '';
+            polGrid.innerHTML = '';
+
+            axes.forEach(id => document.getElementById(id).innerHTML = '');
+
+            // Generate Y Axis labels (n-1 down to 0)
+            for (let r = n - 1; r >= 0; r--) {
+                ['valYAxis', 'polYAxis'].forEach(id => {
+                    let lbl = document.createElement('div');
+                    lbl.className = 'y-axis-label';
+                    lbl.innerText = r;
+                    document.getElementById(id).appendChild(lbl);
+                });
+            }
+
+            // Generate X Axis labels (0 up to n-1)
+            for (let c = 0; c < n; c++) {
+                ['valXAxis', 'polXAxis'].forEach(id => {
+                    let lbl = document.createElement('div');
+                    lbl.className = 'x-axis-label';
+                    lbl.innerText = c;
+                    document.getElementById(id).appendChild(lbl);
+                });
+            }
+
+            // Render Cells
+            for (let r = n - 1; r >= 0; r--) {
+                for (let c = 0; c < n; c++) {
+
+                    let isStart = startCell && startCell[0] === r && startCell[1] === c;
+                    let isEnd = endCell && endCell[0] === r && endCell[1] === c;
+                    let isPt = isPath(r, c);
+
+                    // --- Value Cell ---
+                    let vc = document.createElement('div');
+                    vc.className = 'res-cell';
+                    if (isPt) vc.classList.add('path');
+                    let v = valData[r][c];
+
+                    if (v === null) {
+                        vc.classList.add('obs-res');
+                    } else {
+                        vc.innerText = v;
+                        if (isStart) vc.innerHTML += `<div class="label-text">START</div>`;
+                        if (isEnd) vc.innerHTML += `<div class="label-text">END</div>`;
+                    }
+                    valGrid.appendChild(vc);
+
+                    // --- Policy Cell ---
+                    let pc = document.createElement('div');
+                    pc.className = 'res-cell';
+                    if (isPt) pc.classList.add('path');
+                    let p = polData[r][c];
+
+                    if (p === null) {
+                        pc.classList.add('obs-res');
+                    } else {
+                        if (isStart) pc.innerHTML += `<div class="label-text">START</div>`;
+                        if (isEnd) pc.innerHTML += `<div class="label-text">END</div>`;
+
+                        let arrowSpan = document.createElement('span');
+                        if (['↑', '↓', '←', '→'].includes(p)) {
+                            arrowSpan.className = 'arrow-char';
+                        }
+                        if (p === '⭐') p = '◎'; // Just a marker
+                        arrowSpan.innerText = p;
+                        pc.appendChild(arrowSpan);
+                    }
+                    polGrid.appendChild(pc);
+                }
+            }
+        }
+
+        init();
+    </script>
+
+</body>
+
+</html>
